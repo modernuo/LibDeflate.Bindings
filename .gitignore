@@ -1,0 +1,11 @@
+obj
+bin
+tmp
+
+*.log
+*.user
+/.idea
+/.vs
+/.vscode
+
+.DS_Store
