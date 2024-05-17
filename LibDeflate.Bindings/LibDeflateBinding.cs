@@ -26,9 +26,9 @@ public sealed class LibDeflateBinding : IDisposable
     private readonly nint _compressor;
     private readonly nint _decompressor;
 
-    public LibDeflateBinding()
+    public LibDeflateBinding(LibDeflateCompressionLevel compressionLevel = LibDeflateCompressionLevel.Default)
     {
-        _compressor = NativeMethods.libdeflate_alloc_compressor((int)LibDeflateCompressionLevel.Default);
+        _compressor = NativeMethods.libdeflate_alloc_compressor((int)compressionLevel);
         _decompressor = NativeMethods.libdeflate_alloc_decompressor();
 
         AppDomain.CurrentDomain.ProcessExit += CurrentDomain_ProcessExit;
