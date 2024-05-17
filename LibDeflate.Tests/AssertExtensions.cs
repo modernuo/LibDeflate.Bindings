@@ -2,7 +2,6 @@ namespace System.Tests;
 
 public static class AssertThat
 {
-    // TODO: Swap actual and expected to match Assert
     public static void Equal(ReadOnlySpan<byte> expected, ReadOnlySpan<byte> actual) =>
         Assert.True(
             expected.SequenceEqual(actual),
