@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <Authors>Kamron Batman</Authors>
+        <TargetFramework>net8.0</TargetFramework>
+        <LangVersion>preview</LangVersion>
+        <AssemblyVersion>1.0.0.120</AssemblyVersion>
+        <PackageVersion>1.0.0.120</PackageVersion>
+        <RootNamespace>System.IO.Compression</RootNamespace>
+        <AssemblyName>LibDeflate.Bindings</AssemblyName>
+        <IsPackable>true</IsPackable>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+        <Configurations>Debug;Release;Analyze</Configurations>
+        <NoWarn>NU1603</NoWarn>
+        <RuntimeIdentifiers>win-x64;linux-x64;linux-arm64;osx-x64;osx-arm64</RuntimeIdentifiers>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <Copyright>Copyright 2024</Copyright>
+        <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
+        <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+        <PackageProjectUrl>https://github.com/modernuo/LibDeflate.Bindings</PackageProjectUrl>
+        <Description>LibDeflate bindings for .NET 8+</Description>
+        <Optimize>true</Optimize>
+    </PropertyGroup>
+    <ItemGroup>
+        <Content Include="runtimes\win-x64\native\libdeflate.dll">
+            <Pack>true</Pack>
+            <PackagePath>runtimes/win-x64/native</PackagePath>
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+    </ItemGroup>
+</Project>
