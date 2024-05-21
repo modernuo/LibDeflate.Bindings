@@ -1,4 +1,4 @@
-﻿using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace System.IO.Compression;
@@ -30,14 +30,6 @@ public sealed class LibDeflateBinding : IDisposable
     {
         _compressor = NativeMethods.libdeflate_alloc_compressor((int)compressionLevel);
         _decompressor = NativeMethods.libdeflate_alloc_decompressor();
-
-        AppDomain.CurrentDomain.ProcessExit += CurrentDomain_ProcessExit;
-    }
-
-    private void CurrentDomain_ProcessExit(object? sender, EventArgs e)
-    {
-        NativeMethods.libdeflate_free_compressor(_compressor);
-        NativeMethods.libdeflate_free_decompressor(_decompressor);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -72,7 +64,8 @@ public sealed class LibDeflateBinding : IDisposable
 
     private void ReleaseUnmanagedResources()
     {
-        AppDomain.CurrentDomain.ProcessExit -= CurrentDomain_ProcessExit;
+        NativeMethods.libdeflate_free_compressor(_compressor);
+        NativeMethods.libdeflate_free_decompressor(_decompressor);
     }
 
     public void Dispose()
