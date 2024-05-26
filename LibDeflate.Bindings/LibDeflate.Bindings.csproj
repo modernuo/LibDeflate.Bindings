@@ -3,8 +3,8 @@
         <Authors>Kamron Batman</Authors>
         <TargetFramework>net8.0</TargetFramework>
         <LangVersion>preview</LangVersion>
-        <AssemblyVersion>1.0.1.120</AssemblyVersion>
-        <PackageVersion>1.0.1.120</PackageVersion>
+        <AssemblyVersion>1.0.2.120</AssemblyVersion>
+        <PackageVersion>1.0.2.120</PackageVersion>
         <RootNamespace>System.IO.Compression</RootNamespace>
         <AssemblyName>LibDeflate.Bindings</AssemblyName>
         <IsPackable>true</IsPackable>
@@ -20,6 +20,7 @@
         <PackageProjectUrl>https://github.com/modernuo/LibDeflate.Bindings</PackageProjectUrl>
         <Description>LibDeflate bindings for .NET 8+</Description>
         <Optimize>true</Optimize>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
     <ItemGroup>
         <Content Include="runtimes\win-x64\native\libdeflate.dll">

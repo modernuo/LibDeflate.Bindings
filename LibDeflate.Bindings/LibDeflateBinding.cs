@@ -21,7 +21,7 @@ public enum LibDeflateCompressionLevel
     VeryHigh = 12
 }
 
-public sealed class LibDeflateBinding : IDisposable
+public sealed unsafe class LibDeflateBinding : IDisposable
 {
     private readonly nint _compressor;
     private readonly nint _decompressor;
@@ -37,20 +37,41 @@ public sealed class LibDeflateBinding : IDisposable
         (int)NativeMethods.libdeflate_zlib_compress_bound(_compressor, (nuint)inputLength);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public int Pack(Span<byte> dest, ReadOnlySpan<byte> source) =>
-        (int)NativeMethods.libdeflate_zlib_compress(_compressor, in MemoryMarshal.GetReference(source), (nuint)source.Length,
-            ref MemoryMarshal.GetReference(dest), (nuint)dest.Length);
+    public int Pack(Span<byte> dest, ReadOnlySpan<byte> source)
+    {
+        fixed (byte* inputPtr = source)
+        {
+            fixed (byte* outputPtr = dest)
+            {
+                return (int)NativeMethods.libdeflate_zlib_compress(
+                    _compressor,
+                    inputPtr,
+                    (nuint)source.Length,
+                    outputPtr,
+                    (nuint)dest.Length
+                );
+            }
+        }
+    }
 
     public LibDeflateResult Unpack(Span<byte> dest, ReadOnlySpan<byte> source, out int uncompressedLength)
     {
-        var result = NativeMethods.libdeflate_zlib_decompress(
-            _decompressor,
-            in MemoryMarshal.GetReference(source),
-            (nuint)source.Length,
-            ref MemoryMarshal.GetReference(dest),
-            (nuint)dest.Length,
-            out var bytesWritten
-        );
+        LibDeflateResult result;
+        nuint bytesWritten;
+        fixed (byte* inputPtr = source)
+        {
+            fixed (byte* outputPtr = dest)
+            {
+                result = NativeMethods.libdeflate_zlib_decompress(
+                    _decompressor,
+                    inputPtr,
+                    (nuint)source.Length,
+                    outputPtr,
+                    (nuint)dest.Length,
+                    out bytesWritten
+                );
+            }
+        }
 
         if (result == LibDeflateResult.Success)
         {
@@ -80,7 +101,7 @@ public sealed class LibDeflateBinding : IDisposable
     }
 }
 
-internal static partial class NativeMethods
+internal static unsafe partial class NativeMethods
 {
     private const string DllName = "libdeflate";
 
@@ -91,7 +112,7 @@ internal static partial class NativeMethods
     [LibraryImport(DllName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     public static partial nuint libdeflate_zlib_compress(
-        nint compressor, in byte @in, nuint in_nbytes, ref byte @out, nuint out_nbytes_avail
+        nint compressor, byte* @in, nuint in_nbytes, byte* @out, nuint out_nbytes_avail
     );
 
     [LibraryImport(DllName)]
@@ -109,7 +130,7 @@ internal static partial class NativeMethods
     [LibraryImport(DllName)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     public static partial LibDeflateResult libdeflate_zlib_decompress(
-        nint decompressor, in byte @in, nuint in_nbytes, ref byte @out, nuint out_nbytes_avail,
+        nint decompressor, byte* @in, nuint in_nbytes, byte* @out, nuint out_nbytes_avail,
         out nuint actual_out_nbytes_ret
     );
 
