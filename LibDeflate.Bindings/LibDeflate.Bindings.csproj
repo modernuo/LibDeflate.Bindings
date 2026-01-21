@@ -28,10 +28,10 @@
             <PackagePath>runtimes/win-x64/native</PackagePath>
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
-<!--        <Content Include="runtimes\osx-arm64\native\libdeflate.dylib">-->
-<!--            <Pack>true</Pack>-->
-<!--            <PackagePath>runtimes/osx-arm64/native</PackagePath>-->
-<!--            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>-->
-<!--        </Content>-->
+        <Content Include="runtimes\osx-arm64\native\libdeflate.dylib">
+            <Pack>true</Pack>
+            <PackagePath>runtimes/osx-arm64/native</PackagePath>
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
     </ItemGroup>
 </Project>
