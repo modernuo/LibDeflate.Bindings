@@ -109,6 +109,13 @@ internal static unsafe partial class NativeMethods
     public const string OSXAssemblyName = $"{AssemblyName}.dylib";
     public const string UnixAssemblyName = $"{AssemblyName}.so";
 
+    /// <summary>
+    /// Highest libdeflate.so.N suffix probed on Linux. libdeflate has been .so.0 everywhere we
+    /// checked (Debian, Ubuntu, Fedora, Alpine); the range exists because the digit is per-library
+    /// and per-distro, not a convention.
+    /// </summary>
+    private const int MaxSoVersion = 9;
+
     static NativeMethods() => NativeLibrary.SetDllImportResolver(Assembly.GetExecutingAssembly(), DllImportResolver);
 
     private static IntPtr DllImportResolver(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)
@@ -118,22 +125,22 @@ internal static unsafe partial class NativeMethods
             return IntPtr.Zero;
         }
 
+        var libName = GetPlatformLibraryName();
         var assemblyLocation = assembly.Location;
+
         if (!string.IsNullOrEmpty(assemblyLocation))
         {
             var assemblyDir = Path.GetDirectoryName(assemblyLocation);
             if (assemblyDir != null)
             {
-                var libName = GetPlatformLibraryName();
-
-                // Try runtimes/{rid}/native/ folder (standard NuGet layout for non-published builds)
+                // Bundled: runtimes/{rid}/native/ (standard NuGet layout for non-published builds)
                 var runtimesPath = Path.Combine(assemblyDir, "runtimes", GetRuntimeIdentifier(), "native", libName);
                 if (File.Exists(runtimesPath) && NativeLibrary.TryLoad(runtimesPath, out var runtimesHandle))
                 {
                     return runtimesHandle;
                 }
 
-                // Try directly next to assembly (published apps)
+                // Bundled: directly next to the assembly (published apps)
                 var bundledPath = Path.Combine(assemblyDir, libName);
                 if (File.Exists(bundledPath) && NativeLibrary.TryLoad(bundledPath, out var bundledHandle))
                 {
@@ -142,27 +149,58 @@ internal static unsafe partial class NativeMethods
             }
         }
 
-        // macOS ARM64: Try Homebrew path
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) &&
-            RuntimeInformation.ProcessArchitecture == Architecture.Arm64)
-        {
-            if (NativeLibrary.TryLoad($"/opt/homebrew/lib/{AssemblyName}.dylib", out var homebrewHandle))
-            {
-                return homebrewHandle;
-            }
-        }
-
-        // Fall back to default resolution
-        if (NativeLibrary.TryLoad(libraryName, assembly, searchPath, out var handle))
+        // The loader's own search path, unversioned. This is what an install with the -dev package
+        // resolves on, so it stays ahead of the versioned probe below.
+        if (NativeLibrary.TryLoad(libName, assembly, searchPath, out var handle))
         {
             return handle;
         }
 
-        throw new DllNotFoundException(
-            $"Could not load {libraryName}. " +
-            (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
-                ? "On macOS, install via: brew install libdeflate"
-                : "Ensure libdeflate is installed on your system."));
+        // Linux ships libdeflate.so.N and only the -dev package adds the unversioned symlink the
+        // step above needs. Probe versions by bare name so this still goes through the full loader
+        // search path (LD_LIBRARY_PATH, /etc/ld.so.conf.d). Descending prefers the newest ABI.
+        if (OperatingSystem.IsLinux())
+        {
+            for (var soVersion = MaxSoVersion; soVersion >= 0; soVersion--)
+            {
+                if (NativeLibrary.TryLoad($"{AssemblyName}.so.{soVersion}", assembly, searchPath, out handle))
+                {
+                    return handle;
+                }
+            }
+        }
+
+        // Homebrew on Apple Silicon is off the default dyld search path.
+        if (OperatingSystem.IsMacOS() &&
+            RuntimeInformation.ProcessArchitecture == Architecture.Arm64 &&
+            NativeLibrary.TryLoad($"/opt/homebrew/lib/{OSXAssemblyName}", out handle))
+        {
+            return handle;
+        }
+
+        throw new DllNotFoundException(BuildNotFoundMessage());
+    }
+
+    private static string BuildNotFoundMessage()
+    {
+        if (OperatingSystem.IsLinux())
+        {
+            return $"""
+                   Could not load {AssemblyName}. Tried {UnixAssemblyName} and {AssemblyName}.so.0 through {AssemblyName}.so.{MaxSoVersion} on the loader path, and runtimes/{GetRuntimeIdentifier()}/native/ next to the assembly.
+
+                   Install the runtime library. The -dev package is NOT required:
+                     Debian/Ubuntu   sudo apt-get install -y libdeflate0
+                     Fedora/RHEL     sudo dnf install -y libdeflate
+                     Alpine          apk add libdeflate
+                   """;
+        }
+
+        if (OperatingSystem.IsMacOS())
+        {
+            return $"Could not load {AssemblyName}. Install it with: brew install libdeflate";
+        }
+
+        return $"Could not load {AssemblyName}. The bundled runtimes/{GetRuntimeIdentifier()}/native/{GetPlatformLibraryName()} is missing from the package.";
     }
 
     private static string GetPlatformLibraryName() =>
