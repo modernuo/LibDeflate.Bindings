@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  windows:
+    name: Windows (bundled DLL)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet test LibDeflate.Bindings.sln --configuration Release
+
+  linux-runtime-only:
+    name: Linux (runtime package only, no -dev)
+    runs-on: ubuntu-latest
+    container: mcr.microsoft.com/dotnet/sdk:10.0
+    env:
+      LIBDEFLATE_TEST_MODE: runtime-only
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the runtime library only
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq libdeflate0
+      # Load-bearing. If a future base image starts shipping the unversioned symlink, resolution
+      # would succeed on the plain-name step and this job would silently stop exercising the
+      # versioned probe it exists to test.
+      - name: Assert the unversioned symlink is absent
+        run: |
+          if ls /usr/lib/*/libdeflate.so 2>/dev/null; then
+            echo "libdeflate.so symlink present - this job is not testing what it claims" >&2
+            exit 1
+          fi
+      - run: dotnet test LibDeflate.Bindings.sln --configuration Release
+
+  linux-dev-package:
+    name: Linux (-dev installed, regression guard)
+    runs-on: ubuntu-latest
+    container: mcr.microsoft.com/dotnet/sdk:10.0
+    env:
+      LIBDEFLATE_TEST_MODE: dev
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the -dev package, as existing servers have
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq libdeflate-dev
+      - run: dotnet test LibDeflate.Bindings.sln --configuration Release
+
+  linux-musl:
+    name: Alpine (musl, runtime package only)
+    runs-on: ubuntu-latest
+    container: mcr.microsoft.com/dotnet/sdk:10.0-alpine
+    env:
+      LIBDEFLATE_TEST_MODE: runtime-only
+    steps:
+      - uses: actions/checkout@v4
+      - run: apk add --no-cache libdeflate
+      - run: dotnet test LibDeflate.Bindings.sln --configuration Release
+
+  linux-missing:
+    name: Linux (no native library)
+    runs-on: ubuntu-latest
+    container: mcr.microsoft.com/dotnet/sdk:10.0
+    env:
+      LIBDEFLATE_TEST_MODE: missing
+    steps:
+      - uses: actions/checkout@v4
+      # Filtered: LibDeflateTests holds a static LibDeflateBinding, so its type initializer throws
+      # when no native library exists. That is correct behaviour, not a failure to report here.
+      - run: >
+          dotnet test LibDeflate.Bindings.sln --configuration Release
+          --filter FullyQualifiedName~NativeResolutionTests
